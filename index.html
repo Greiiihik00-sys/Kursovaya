@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoFlow X CRM</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#ffffff14; --text:#e2e8f0; --muted:#94a3b8; --a:#22d3ee; --b:#818cf8; --ok:#34d399; --bad:#f87171; }
+    * { box-sizing:border-box; margin:0; padding:0; font-family:Segoe UI, system-ui, sans-serif; }
+    body { min-height:100vh; color:var(--text); background:linear-gradient(145deg,#0f172a,#111827); padding:18px; }
+    .wrap { max-width:1450px; margin:0 auto; display:grid; gap:12px; }
+    .glass { background:var(--panel); border:1px solid #ffffff2c; border-radius:16px; backdrop-filter:blur(8px); }
+    .top { display:flex; justify-content:space-between; gap:10px; align-items:center; padding:14px; flex-wrap:wrap; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .btn { border:none; border-radius:10px; padding:10px 14px; color:white; font-weight:600; cursor:pointer; }
+    .btn1 { background:linear-gradient(135deg,var(--a),#0ea5e9); color:#052e2b; }
+    .btn2 { background:linear-gradient(135deg,#6366f1,var(--b)); }
+    .btn3 { background:linear-gradient(135deg,#ef4444,#b91c1c); }
+    .kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; }
+    .card { padding:12px; }
+    .label { color:var(--muted); font-size:12px; margin-bottom:6px; }
+    .value { font-size:28px; font-weight:700; }
+    .toolbar { display:grid; grid-template-columns:1fr auto auto; gap:8px; padding:12px; }
+    input,select { border:1px solid #ffffff3d; border-radius:10px; padding:11px 12px; background:#ffffff14; color:white; }
+    option{ color:black; }
+    .mini { display:none; grid-template-columns:220px 1fr auto; gap:10px; align-items:center; padding:10px; }
+    .mini.active { display:grid; }
+    .mini img { width:100%; height:120px; object-fit:cover; border-radius:10px; border:1px solid #ffffff3d; }
+    .content { display:grid; grid-template-columns:1.3fr .9fr; gap:12px; }
+    table { width:100%; border-collapse:collapse; min-width:860px; }
+    th,td { padding:10px 12px; border-bottom:1px solid #ffffff1f; text-align:left; }
+    th { font-size:12px; color:#cbd5e1; text-transform:uppercase; }
+    tr { cursor:pointer; }
+    tr.active { background:#818cf833; }
+    .thumb { width:84px; height:52px; object-fit:cover; border-radius:8px; border:1px solid #ffffff3d; }
+    .badge { border-radius:999px; padding:4px 8px; font-size:12px; font-weight:600; }
+    .s1 { background:#34d39933; color:#6ee7b7; } .s2 { background:#fbbf2433; color:#fde68a; } .s3 { background:#f8717133; color:#fecaca; }
+    .details { padding:12px; display:grid; gap:8px; align-content:start; }
+    .photo { width:100%; height:210px; object-fit:cover; border-radius:10px; border:1px solid #ffffff3d; }
+    .kv { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .kvi { background:#ffffff14; border:1px solid #ffffff24; border-radius:10px; padding:8px; }
+    .muted { color:var(--muted); }
+    .toast { position:fixed; top:14px; right:14px; background:#0b1220; padding:10px 12px; border-radius:9px; border-left:4px solid var(--a); }
+    .login { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#000000b8; z-index:9; }
+    .box { width:min(380px,90vw); padding:20px; border-radius:14px; background:#111827; border:1px solid #ffffff2c; display:grid; gap:8px; }
+    .err { color:#fca5a5; min-height:18px; font-size:13px; }
+    @media (max-width:1000px){ .content{ grid-template-columns:1fr; } .mini{ grid-template-columns:1fr; } .toolbar{ grid-template-columns:1fr; } .kv{ grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="login" id="loginOverlay">
+    <div class="box">
+      <h2>AutoFlow X • Вход</h2>
+      <input id="loginUser" value="admin" placeholder="Логин">
+      <input id="loginPass" value="admin123" type="password" placeholder="Пароль">
+      <button class="btn btn1" onclick="login()">Войти</button>
+      <div class="err" id="loginError"></div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <header class="top glass">
+      <div>
+        <h1>AutoFlow X <span style="color:#22d3ee">.CRM</span></h1>
+        <div class="muted">Access + локальные фото</div>
+      </div>
+      <div class="actions">
+        <button class="btn btn2" onclick="addRandomCar()">+ Случайная машина</button>
+        <button class="btn btn1" onclick="randomDeal()">Случайная сделка</button>
+        <button class="btn btn3" onclick="logout()">Выйти</button>
+      </div>
+    </header>
+
+    <section class="kpi" id="stats"></section>
+
+    <section class="toolbar glass">
+      <input id="search" placeholder="Поиск по марке, модели, VIN, владельцу">
+      <select id="brandFilter"></select>
+      <select id="statusFilter">
+        <option value="all">Все статусы</option>
+        <option value="В наличии">В наличии</option>
+        <option value="Резерв">Резерв</option>
+        <option value="Продано">Продано</option>
+      </select>
+    </section>
+
+    <section class="mini glass" id="miniCarPanel">
+      <img id="miniCarPhoto" alt="">
+      <div>
+        <h3 id="miniCarTitle"></h3>
+        <p class="muted" id="miniCarText"></p>
+      </div>
+      <button class="btn btn2" onclick="closeMiniPanel()">Скрыть</button>
+    </section>
+
+    <main class="content">
+      <section class="glass" style="overflow:auto;">
+        <table>
+          <thead><tr><th>ID</th><th>Фото</th><th>Авто</th><th>Год</th><th>VIN</th><th>Цена</th><th>Статус</th><th>Владелец</th></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </section>
+      <aside class="details glass" id="details"></aside>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:5000" : "";
+    const stockTemplates = [
+      {brand:"LADA",model:"Priora",photo:"cars/lada-priora.jpg.jpg",short:"LADA Priora - популярная модель вторичного рынка."},
+      {brand:"LADA",model:"Granta",photo:"cars/lada-granta.jpg.jpg",short:"LADA Granta - доступный массовый седан, недорог в обслуживании."},
+      {brand:"LADA",model:"Vesta",photo:"cars/lada-vesta.jpg.jpg",short:"LADA Vesta - массовая российская модель с современным оснащением."},
+      {brand:"KIA",model:"Rio",photo:"cars/kia-rio.jpg.jpg",short:"KIA Rio - городской седан B-класса, высокий спрос на вторичке."},
+      {brand:"Renault",model:"Logan",photo:"cars/renault-logan.jpg.jpg",short:"Renault Logan - практичный бюджетный автомобиль."},
+      {brand:"Volkswagen",model:"Polo",photo:"cars/vw-polo.jpg.jpg",short:"Volkswagen Polo - крепкий городской седан."},
+      {brand:"Toyota",model:"Corolla",photo:"cars/toyota-corolla.jpg.jpg",short:"Toyota Corolla - глобальный бестселлер C-класса."},
+      {brand:"Toyota",model:"Camry",photo:"cars/toyota-camry.jpg.jpg",short:"Toyota Camry - популярный бизнес-седан."}
+    ];
+    const mediaByKey = new Map(stockTemplates.map(x => [`${x.brand}::${x.model}`.toLowerCase(), x]));
+    let vehicles = [];
+    let selectedId = null;
+    let busy = false;
+    async function fetchWithTimeout(url, opts = {}, timeoutMs = 8000){
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      try { return await fetch(url, {...opts, signal: ctrl.signal}); }
+      finally { clearTimeout(t); }
+    }
+
+
+    function toast(t){ const e=document.createElement("div"); e.className="toast"; e.textContent=t; document.body.appendChild(e); setTimeout(()=>e.remove(),2200); }
+    function formatMoney(v){ return `${v.toLocaleString("ru-RU")} ₽`; }
+    function statusClass(s){ if(s==="Продано") return "s3"; if(s==="Резерв") return "s2"; return "s1"; }
+
+    function fillBrandFilter(){
+      const brands = ["all", ...new Set(vehicles.map(v => v.brand))];
+      document.getElementById("brandFilter").innerHTML = brands.map(b=>`<option value="${b}">${b==="all"?"Все марки":b}</option>`).join("");
+    }
+
+    function renderStats(){
+      const total = vehicles.length;
+      const available = vehicles.filter(v=>v.status==="В наличии").length;
+      const sold = vehicles.filter(v=>v.status==="Продано").length;
+      const revenue = vehicles.filter(v=>v.status==="Продано").reduce((s,v)=>s+v.price,0);
+      document.getElementById("stats").innerHTML = [
+        {l:"Всего авто",v:total},{l:"В наличии",v:available},{l:"Продано",v:sold},{l:"Выручка",v:formatMoney(revenue)}
+      ].map(x=>`<article class="card glass"><div class="label">${x.l}</div><div class="value">${x.v}</div></article>`).join("");
+    }
+
+    function filtered(){
+      const q = document.getElementById("search").value.trim().toLowerCase();
+      const b = document.getElementById("brandFilter").value;
+      const s = document.getElementById("statusFilter").value;
+      return vehicles.filter(v=>{
+        const byQ = v.brand.toLowerCase().includes(q)||v.model.toLowerCase().includes(q)||v.vin.toLowerCase().includes(q)||v.owner.toLowerCase().includes(q);
+        return byQ && (b==="all"||v.brand===b) && (s==="all"||v.status===s);
+      });
+    }
+
+    function renderTable(){
+      const data = filtered();
+      const body = document.getElementById("tableBody");
+      body.innerHTML = data.map(v=>`
+        <tr class="${v.id===selectedId?"active":""}" onclick="openDetails(${v.id})">
+          <td>${String(v.id).padStart(3,"0")}</td>
+          <td><img class="thumb" src="${v.photo}" alt=""></td>
+          <td><strong>${v.brand}</strong> ${v.model}</td>
+          <td>${v.year}</td>
+          <td style="font-family:Consolas,monospace;font-size:12px">${v.vin}</td>
+          <td><strong>${formatMoney(v.price)}</strong></td>
+          <td><span class="badge ${statusClass(v.status)}">${v.status}</span></td>
+          <td>${v.owner}</td>
+        </tr>`).join("");
+      if(!data.some(v=>v.id===selectedId) && data.length) selectedId = data[0].id;
+      renderDetails();
+    }
+
+    function renderDetails(){
+      const car = vehicles.find(v=>v.id===selectedId);
+      const p = document.getElementById("details");
+      if(!car){ p.innerHTML="<h3>Ничего не найдено</h3>"; closeMiniPanel(); return; }
+      p.innerHTML = `
+        <img class="photo" src="${car.photo}" alt="">
+        <h3>${car.brand} ${car.model}</h3>
+        <p class="muted">${car.short || "Описание модели"}</p>
+        <div class="kv">
+          <div class="kvi"><div class="muted">Год</div><div>${car.year}</div></div>
+          <div class="kvi"><div class="muted">Цена</div><div>${formatMoney(car.price)}</div></div>
+          <div class="kvi"><div class="muted">Пробег</div><div>${car.mileage.toLocaleString("ru-RU")} км</div></div>
+          <div class="kvi"><div class="muted">Двигатель</div><div>${car.engine}</div></div>
+          <div class="kvi"><div class="muted">Статус</div><div>${car.status}</div></div>
+          <div class="kvi"><div class="muted">Владелец</div><div>${car.owner}</div></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn1" onclick="setStatus('Продано')">Продать</button>
+          <button class="btn btn2" onclick="setStatus('Резерв')">В резерв</button>
+        </div>
+      `;
+      updateMiniPanel(car);
+    }
+
+    function openDetails(id){ selectedId = id; renderTable(); }
+    function closeMiniPanel(){ document.getElementById("miniCarPanel").classList.remove("active"); }
+    function updateMiniPanel(car){
+      const fallback = "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='900' height='520'><rect width='100%' height='100%' fill='#2563eb'/><text x='50%' y='50%' fill='white' font-size='52' text-anchor='middle' font-family='Segoe UI'>${car.brand} ${car.model}</text></svg>`);
+      const img = document.getElementById("miniCarPhoto");
+      img.onerror = ()=>{img.onerror=null; img.src=fallback;};
+      img.src = car.photo;
+      document.getElementById("miniCarTitle").textContent = `${car.brand} ${car.model} (${car.year})`;
+      document.getElementById("miniCarText").textContent = car.short || "Актуальная модель";
+      document.getElementById("miniCarPanel").classList.add("active");
+    }
+
+    async function loadVehicles(){
+      const r = await fetchWithTimeout(`${API_BASE}/api/vehicles`, {}, 8000);
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || data.ok === false) {
+        throw new Error(data.message || "БД Access недоступна");
+      }
+      vehicles = (Array.isArray(data)?data:[]).map(v=>{
+        const media = mediaByKey.get(`${v.brand}::${v.model}`.toLowerCase());
+        return {...v, photo: media?.photo || "cars/lada-granta.jpg.jpg", short: media?.short || "Массовая модель"};
+      });
+      if(!selectedId && vehicles.length) selectedId = vehicles[0].id;
+      fillBrandFilter();
+    }
+
+    async function addRandomCar(){
+      if (busy) return;
+      busy = true;
+      try{
+        const r = await fetch(`${API_BASE}/api/vehicles/random`, {method:"POST"});
+        const d = await r.json().catch(()=>({}));
+        if(!r.ok || !d.ok){ toast(d.message || "Не удалось добавить авто"); return; }
+        await loadVehicles(); selectedId = d.vehicle_id; renderAll(); toast("Добавлена случайная машина");
+      }catch{ toast("Не удалось связаться с сервером"); }
+      finally { busy = false; }
+    }
+
+    async function randomDeal(){
+      if (busy) return;
+      busy = true;
+      try{
+        const r = await fetch(`${API_BASE}/api/deals/random`, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({note:"Сделка из интерфейса"})});
+        const d = await r.json().catch(()=>({}));
+        if(!r.ok || !d.ok){ toast(d.message || "Ошибка сделки"); return; }
+        await loadVehicles(); selectedId = d.deal.vehicle_id; renderAll(); toast(d.message || "Сделка создана");
+      }catch{ toast("Не удалось связаться с сервером"); }
+      finally { busy = false; }
+    }
+
+    async function setStatus(status){
+      if (busy) return;
+      const car = vehicles.find(v=>v.id===selectedId); if(!car) return;
+      busy = true;
+      try{
+        const r = await fetch(`${API_BASE}/api/vehicles/${car.id}/status`, {method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify({status})});
+        const d = await r.json().catch(()=>({}));
+        if(!r.ok || d.ok===false){ toast(d.message || "Не удалось обновить статус"); return; }
+        await loadVehicles(); renderAll(); toast(`Статус: ${status}`);
+      }catch{ toast("Не удалось связаться с сервером"); }
+      finally { busy = false; }
+    }
+
+    function renderAll(){ renderStats(); renderTable(); }
+
+    function login(){
+      const u=document.getElementById("loginUser").value.trim();
+      const p=document.getElementById("loginPass").value.trim();
+      if(u==="admin" && p==="admin123"){ document.getElementById("loginOverlay").style.display="none"; return; }
+      document.getElementById("loginError").textContent = "Неверный логин/пароль";
+    }
+    function logout(){ document.getElementById("loginOverlay").style.display="flex"; document.getElementById("loginPass").value=""; document.getElementById("loginError").textContent=""; }
+
+    document.getElementById("search").addEventListener("input", renderTable);
+    document.getElementById("brandFilter").addEventListener("change", renderTable);
+    document.getElementById("statusFilter").addEventListener("change", renderTable);
+
+    (async function init(){
+      try { await loadVehicles(); }
+      catch (e) {
+        if (e?.name === "AbortError") {
+          toast("Сервер не ответил вовремя. Закрой Access и повтори.");
+        } else {
+          toast(e?.message || "API недоступно. Запусти python app.py и закрой Access");
+        }
+      }
+      renderAll();
+    })();
+  </script>
+</body>
+</html>
